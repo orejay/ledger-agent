@@ -1,12 +1,15 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config/config';
+import { logger } from '../logger/logger';
 import { type TraceEvent, Tracer } from '../tracer/tracer';
 import { activeObservation, observation } from '../tracer/trace';
 import { ToolSource } from '../tools/types';
 
-export class Agent {
-  private client = new Anthropic();
+export type AnthropicClient = {
+  messages: { create: Anthropic.Messages['create'] };
+};
 
+export class Agent {
   constructor(
     private toolSource: ToolSource,
     private approve: (
@@ -16,6 +19,7 @@ export class Agent {
     private sensitiveTools: Set<string> = new Set(['flag_account']),
     private tracer: Tracer = new Tracer(),
     private maxSteps = 8,
+    private client: AnthropicClient = new Anthropic(),
   ) {}
 
   private isSensitive(name: string): boolean {
@@ -84,7 +88,7 @@ export class Agent {
             continue;
           }
 
-          console.log(`→ ${block.name}(${JSON.stringify(block.input)})`);
+          logger.info('tool_use', { name: block.name, input: block.input });
 
           if (
             this.isSensitive(block.name) &&
@@ -130,6 +134,10 @@ export class Agent {
               content: result,
             });
           } catch (error) {
+            logger.error('tool_error', {
+              name: block.name,
+              error: (error as Error).message,
+            });
             toolResults.push({
               type: 'tool_result',
               tool_use_id: block.id,

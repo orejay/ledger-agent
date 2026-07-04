@@ -1,8 +1,4 @@
-import {
-  startActiveObservation,
-  startObservation,
-  type LangfuseSpan,
-} from '@langfuse/tracing';
+import { startActiveObservation, startObservation } from '@langfuse/tracing';
 import { tracingEnabled } from './instrumentation';
 
 const noopSpan: any = {

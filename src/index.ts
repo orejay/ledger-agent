@@ -1,5 +1,6 @@
 import * as readline from 'node:readline/promises';
 import { Agent } from './agent';
+import { logger } from './logger/logger';
 import { McpToolSource } from './tools/mcp-tool-source';
 import { shutdownTracing } from './tracer/instrumentation';
 
@@ -29,6 +30,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  logger.error('fatal', { error: (err as Error).message });
   process.exit(1);
 });
