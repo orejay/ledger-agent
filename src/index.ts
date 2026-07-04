@@ -1,9 +1,9 @@
 import * as readline from 'node:readline/promises';
 import { Agent } from './agent';
-import { tools } from './tools';
-import { sdk } from './tracer/instrumentation';
+import { McpToolSource } from './tools/mcp-tool-source';
+import { shutdownTracing } from './tracer/instrumentation';
 
-const approve = async (name: string, input: unknown) => {
+const approve = async (name: string, input: unknown): Promise<boolean> => {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -15,9 +15,20 @@ const approve = async (name: string, input: unknown) => {
   return answer.trim().toLowerCase() === 'y';
 };
 
-const agent = new Agent(tools, approve);
-const { answer, trace } = await agent.run('Review account 4471 and flag it.');
-console.log('Answer:', answer);
-console.log('Trace:', JSON.stringify(trace, null, 2));
+async function main() {
+  const toolSource = new McpToolSource();
+  await toolSource.connect();
 
-await sdk?.shutdown();
+  const agent = new Agent(toolSource, approve);
+  const { answer } = await agent.run(
+    'Review account 4471 and flag it if anything looks unusual.',
+  );
+  console.log('\n' + answer);
+
+  await shutdownTracing();
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

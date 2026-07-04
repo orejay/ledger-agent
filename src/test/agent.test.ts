@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Agent } from '../agent';
 import { makeMockTool } from './mock-tool';
+import { LocalToolSource } from '../tools/local-tool-source';
 import { z } from 'zod';
 
 describe('Agent tool-calling', () => {
@@ -12,7 +13,7 @@ describe('Agent tool-calling', () => {
     );
     const registry = { [getTx.name]: getTx };
 
-    const agent = new Agent(registry, async () => true);
+    const agent = new Agent(new LocalToolSource(registry), async () => true);
     await agent.run('What are the recent transactions on account 4471?');
 
     expect(getTx.calls.length).toBeGreaterThan(0);
@@ -30,7 +31,7 @@ describe('Agent tool-calling', () => {
     );
     const registry = { [flag.name]: flag };
 
-    const agent = new Agent(registry, async () => false);
+    const agent = new Agent(new LocalToolSource(registry), async () => false);
 
     await agent.run('Flag account 4471 for suspicious activity.');
 
@@ -48,7 +49,7 @@ describe('Agent tool-calling', () => {
     );
     const registry = { [flag.name]: flag };
 
-    const agent = new Agent(registry, async () => true);
+    const agent = new Agent(new LocalToolSource(registry), async () => true);
 
     await agent.run('Flag account 4471 for suspicious activity.');
 

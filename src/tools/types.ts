@@ -7,3 +7,14 @@ export interface Tool {
   sensitive?: boolean;
   execute: (args: any) => Promise<unknown>;
 }
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: unknown;
+}
+
+export interface ToolSource {
+  listTools(): Promise<ToolDefinition[]>;
+  callTool(name: string, input: unknown): Promise<string>;
+}

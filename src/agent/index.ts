@@ -1,31 +1,33 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config/config';
-import { tools } from '../tools';
-import { z } from 'zod';
 import { type TraceEvent, Tracer } from '../tracer/tracer';
-import { start } from 'node:repl';
 import { activeObservation, observation } from '../tracer/trace';
+import { ToolSource } from '../tools/types';
 
 export class Agent {
   private client = new Anthropic();
 
   constructor(
-    private toolRegistry: typeof tools,
+    private toolSource: ToolSource,
     private approve: (
       name: string,
       input: unknown,
     ) => Promise<boolean> = async () => false,
+    private sensitiveTools: Set<string> = new Set(['flag_account']),
     private tracer: Tracer = new Tracer(),
     private maxSteps = 8,
   ) {}
 
-  private toolDefs() {
-    return Object.values(this.toolRegistry).map((tool) => ({
-      name: tool.name,
-      description: tool.description,
-      input_schema: z.toJSONSchema(
-        tool.inputSchema,
-      ) as Anthropic.Tool.InputSchema,
+  private isSensitive(name: string): boolean {
+    return this.sensitiveTools.has(name);
+  }
+
+  private async toolDefs() {
+    const defs = await this.toolSource.listTools();
+    return defs.map((t) => ({
+      name: t.name,
+      description: t.description,
+      input_schema: t.inputSchema as Anthropic.Tool.InputSchema,
     }));
   }
 
@@ -53,7 +55,7 @@ export class Agent {
           model: config.anthropicModel,
           max_tokens: 1024,
           messages,
-          tools: this.toolDefs(),
+          tools: await this.toolDefs(),
         });
         gen
           .update({
@@ -82,11 +84,10 @@ export class Agent {
             continue;
           }
 
-          const tool = this.toolRegistry[block.name];
           console.log(`→ ${block.name}(${JSON.stringify(block.input)})`);
 
           if (
-            tool.sensitive &&
+            this.isSensitive(block.name) &&
             !(await this.approve(block.name, block.input))
           ) {
             this.tracer.record({ type: 'denied', name: block.name, step });
@@ -101,7 +102,6 @@ export class Agent {
           }
 
           try {
-            const args = tool.inputSchema.parse(block.input);
             this.tracer.record({
               type: 'tool_call',
               name: block.name,
@@ -113,7 +113,10 @@ export class Agent {
               { input: block.input },
               { asType: 'tool' },
             );
-            const result = await tool.execute(args);
+            const result = await this.toolSource.callTool(
+              block.name,
+              block.input,
+            );
             toolObservation.update({ output: result }).end();
             this.tracer.record({
               type: 'tool_result',
@@ -124,7 +127,7 @@ export class Agent {
             toolResults.push({
               type: 'tool_result',
               tool_use_id: block.id,
-              content: JSON.stringify(result),
+              content: result,
             });
           } catch (error) {
             toolResults.push({
