@@ -1,14 +1,8 @@
-import { Agent } from './agent';
-import { tools } from './tools';
+import { sdk } from './tracer/instrumentation'; // MUST be first — sets up tracing before anything else
+import { startActiveObservation } from '@langfuse/tracing';
 
-const agent = new Agent(tools);
+await startActiveObservation('pipe-test', async (span) => {
+  span.update({ input: 'hello', output: 'world' });
+});
 
-// await agent.run('show me recent activity on account 4471').then((response) => {
-//   console.log('Agent response:', response);
-// });
-
-agent
-  .run("Review account 4471's recent activity and flag the account.")
-  .then((response) => {
-    console.log('Agent response:', response);
-  });
+await sdk?.shutdown(); // force-flush before the script exits, or the span is lost

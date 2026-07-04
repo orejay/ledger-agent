@@ -1,6 +1,7 @@
 import * as readline from 'node:readline/promises';
 import { Agent } from './agent';
 import { tools } from './tools';
+import { sdk } from './tracer/instrumentation';
 
 const approve = async (name: string, input: unknown) => {
   const rl = readline.createInterface({
@@ -17,4 +18,6 @@ const approve = async (name: string, input: unknown) => {
 const agent = new Agent(tools, approve);
 const { answer, trace } = await agent.run('Review account 4471 and flag it.');
 console.log('Answer:', answer);
-console.log('Trace:', trace);
+console.log('Trace:', JSON.stringify(trace, null, 2));
+
+await sdk?.shutdown();
