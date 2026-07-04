@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { config } from '../config/config';
 import { tools } from '../tools';
 import { z } from 'zod';
+import { type TraceEvent, Tracer } from '../tracer/tracer';
 
 export class Agent {
   private client = new Anthropic();
@@ -12,6 +13,7 @@ export class Agent {
       name: string,
       input: unknown,
     ) => Promise<boolean> = async () => false,
+    private tracer: Tracer = new Tracer(),
     private maxSteps = 8,
   ) {}
 
@@ -25,12 +27,15 @@ export class Agent {
     }));
   }
 
-  async run(question: string): Promise<string> {
+  async run(
+    question: string,
+  ): Promise<{ answer: string; trace: TraceEvent[] }> {
     const messages: Anthropic.MessageParam[] = [
       { role: 'user', content: question },
     ];
 
     for (let step = 0; step < this.maxSteps; step++) {
+      this.tracer.record({ type: 'model_call', step });
       const response = await this.client.messages.create({
         model: config.anthropicModel,
         max_tokens: 1024,
@@ -41,7 +46,10 @@ export class Agent {
       if (response.stop_reason !== 'tool_use') {
         const text = response.content.find((c) => c.type === 'text');
 
-        return text?.type === 'text' ? text.text : '';
+        return {
+          answer: text?.type === 'text' ? text.text : '',
+          trace: this.tracer.trace,
+        };
       }
 
       const toolResults: Anthropic.ToolResultBlockParam[] = [];
@@ -55,6 +63,8 @@ export class Agent {
         console.log(`→ ${block.name}(${JSON.stringify(block.input)})`);
 
         if (tool.sensitive && !(await this.approve(block.name, block.input))) {
+          this.tracer.record({ type: 'denied', name: block.name, step });
+
           toolResults.push({
             type: 'tool_result',
             tool_use_id: block.id,
@@ -66,7 +76,19 @@ export class Agent {
 
         try {
           const args = tool.inputSchema.parse(block.input);
+          this.tracer.record({
+            type: 'tool_call',
+            name: block.name,
+            input: block.input,
+            step,
+          });
           const result = await tool.execute(args);
+          this.tracer.record({
+            type: 'tool_result',
+            name: block.name,
+            output: result,
+            step,
+          });
           toolResults.push({
             type: 'tool_result',
             tool_use_id: block.id,
@@ -86,6 +108,9 @@ export class Agent {
       messages.push({ role: 'user', content: toolResults });
     }
 
-    return 'Max steps reached without a final answer.';
+    return {
+      answer: 'Max steps reached without a final answer.',
+      trace: this.tracer.trace,
+    };
   }
 }
