@@ -1,10 +1,8 @@
-import 'dotenv/config';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { LangfuseSpanProcessor } from '@langfuse/otel';
+import { config } from '../config/config';
 
-const enabled = Boolean(
-  process.env.LANGFUSE_PUBLIC_KEY && process.env.LANGFUSE_SECRET_KEY,
-);
+const enabled = config.tracingEnabled;
 
 export const sdk = enabled
   ? new NodeSDK({
