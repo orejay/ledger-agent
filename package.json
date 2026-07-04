@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "An LLM agent with human-in-the-loop approval gating and OpenTelemetry tracing for auditable ledger operations.",
   "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/orejay/ledger-agent.git"
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
     "mcp": "tsx src/mcp/server.ts",
