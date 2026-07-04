@@ -1,12 +1,25 @@
 {
   "name": "ledger-agent",
   "version": "1.0.0",
-  "description": "",
+  "description": "An LLM agent with human-in-the-loop approval gating and OpenTelemetry tracing for auditable ledger operations.",
   "main": "index.js",
   "scripts": {
-    "test": "vitest run"
+    "dev": "tsx src/index.ts",
+    "mcp": "tsx src/mcp/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
-  "keywords": [],
+  "keywords": [
+    "llm-agent",
+    "anthropic",
+    "mcp",
+    "opentelemetry"
+  ],
   "author": "",
   "license": "ISC",
   "type": "module",
@@ -20,9 +33,14 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^26.1.0",
+    "eslint": "^10.6.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.4",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1",
     "vitest": "^4.1.9"
   }
 }
